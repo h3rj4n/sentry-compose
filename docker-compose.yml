@@ -1,0 +1,63 @@
+version: '3.6'
+
+networks:
+  internal:
+  # Attach to Traefik
+  proxy:
+    external: true
+
+volumes:
+  pgdb:
+
+services:
+  sentry:
+    image: sentry:latest
+    networks:
+      - internal
+      - proxy
+    links:
+     - redis
+     - postgres
+    env_file:
+      - sentry.env
+    labels:
+      traefik.frontend.rule: "Host:sentry.localhost"
+      traefik.docker.network: proxy
+      traefik.port: '9000'
+
+      # ~g%^Z(97gqqGi7u^P54T,8Gs.]U^
+
+  cron:
+    image: sentry:latest
+    command: sentry run cron
+    links:
+     - redis
+     - postgres
+    env_file:
+      - sentry.env
+
+  worker:
+    image: sentry:latest
+    links:
+     - redis
+     - postgres
+    command: sentry run worker
+    env_file:
+      - sentry.env
+
+  redis:
+    image: redis:alpine
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:alpine
+    volumes:
+      - pgdb:/var/lib/postgresql/data
+    networks:
+      - internal
+    env_file:
+      - postgres.env
+    environment:
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=sentry_postgres
